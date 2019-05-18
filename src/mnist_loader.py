@@ -10,11 +10,24 @@ function usually called by our neural network code.
 
 #### Libraries
 # Standard library
-import cPickle
 import gzip
+import functools
+import inspect
+import os
+import sys
+
+if sys.version_info[0] < 3:
+    import cPickle as pickle
+    pickleload = pickle.load
+else:
+    import pickle
+    pickleload = functools.partial(pickle.load, fix_imports=True, encoding='bytes')
 
 # Third-party libraries
 import numpy as np
+
+THIS_FILE = os.path.normpath(os.path.abspath(inspect.getsourcefile(lambda: None)))
+THIS_DIR = os.path.dirname(THIS_FILE)
 
 def load_data():
     """Return the MNIST data as a tuple containing the training data,
@@ -39,10 +52,14 @@ def load_data():
     That's done in the wrapper function ``load_data_wrapper()``, see
     below.
     """
-    f = gzip.open('../data/mnist.pkl.gz', 'rb')
-    training_data, validation_data, test_data = cPickle.load(f)
-    f.close()
-    return (training_data, validation_data, test_data)
+    for relpath in ('../data', '.'):
+        datafile = os.path.normpath(os.path.join(THIS_DIR, relpath, 'mnist.pkl.gz'))
+        if os.path.isfile(datafile):
+            f = gzip.open(datafile, 'rb')
+            training_data, validation_data, test_data = pickleload(f)
+            f.close()
+            return (training_data, validation_data, test_data)
+    raise RuntimeError("could not find data file")
 
 def load_data_wrapper():
     """Return a tuple containing ``(training_data, validation_data,
